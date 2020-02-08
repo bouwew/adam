@@ -64,9 +64,13 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
 
     climate_devices = []
+    global controlled_device_id
+    controlled_device_id = None
     for dev in devices:
-        if dev['name'] != 'Controlled Device':
-            device = create_climate_device(adam, hass, dev["name"], dev["id"])
+        if dev['name'] == 'Controlled Device':
+            controlled_device_id = dev['id']
+        else:
+            device = create_climate_device(adam, hass, dev['name'], dev['id'], controlled_device_id )
             if not device:
                 continue
             climate_devices.append(device)
@@ -74,21 +78,22 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     if climate_devices:
         add_entities(climate_devices, True)
 
-def create_climate_device(adam, hass, name, dev_id):
+def create_climate_device(adam, hass, name, dev_id, ctlr_id):
     """Create a Adam climate device."""
-    device = PwThermostat(adam, name, dev_id, DEFAULT_MIN_TEMP, DEFAULT_MAX_TEMP)
+    device = PwThermostat(adam, name, dev_id, ctlr_id, DEFAULT_MIN_TEMP, DEFAULT_MAX_TEMP)
 
-    adam.add_device(dev_id, {"name": name, "data": device})
+    adam.add_device(dev_id, {"ctrl_id": ctlr_id, "name": name, "data": device})
 
     return device
 
 class PwThermostat(ClimateDevice):
     """Representation of an Plugwise thermostat."""
 
-    def __init__(self, api, name, data_id, min_temp, max_temp):
+    def __init__(self, api, name, data_id, ctlr_id, min_temp, max_temp):
         """Set up the Plugwise API."""
         self._api = api
         self._data_id = data_id
+        self._ctrl_id = ctlr_id
 
         self._min_temp = min_temp
         self._max_temp = max_temp
@@ -112,7 +117,7 @@ class PwThermostat(ClimateDevice):
     @property
     def hvac_action(self):
         """Return the current action."""
-        if self._heating_status:
+        if self._heating_status or self._boiler_status or self._dhw_status:
             return CURRENT_HVAC_HEAT
         if self._cooling_status:
             return CURRENT_HVAC_COOL
@@ -126,15 +131,12 @@ class PwThermostat(ClimateDevice):
     @property
     def icon(self):
         """Return the icon to use in the frontend."""
-        if self._name == "Controlled Device":
-            return DEVICE_ICON
         return THERMOSTAT_ICON
 
     @property
     def supported_features(self):
         """Return the list of supported features."""
-        if self._name != "Controlled Device":
-            return SUPPORT_FLAGS
+        return SUPPORT_FLAGS
 
     @property
     def device_state_attributes(self):
@@ -157,14 +159,12 @@ class PwThermostat(ClimateDevice):
         """Return the available preset modes list and make the presets with their
         temperatures available.
         """
-        if self._name != "Controlled Device":
-            return self._presets_list
+        return self._presets_list
 
     @property
     def hvac_modes(self):
         """Return the available hvac modes list."""
-        #if self._name == "Controlled Device":
-        if self._heating_status is not None:
+        if self._heating_status is not None or self._boiler_status is not None:
             if self._cooling_status is not None:
                 return HVAC_MODES_2
             return HVAC_MODES_1
@@ -172,14 +172,13 @@ class PwThermostat(ClimateDevice):
     @property
     def hvac_mode(self):
         """Return current active hvac state."""
-        if self._name != "Controlled Device":
-            if self._schema_status:
-                return HVAC_MODE_AUTO
-        else:
-            if self._heating_status:
-                if self._cooling_status:
-                    return HVAC_MODE_HEAT_COOL
-                return HVAC_MODE_HEAT
+        if self._schema_status:
+            return HVAC_MODE_AUTO
+        if self._heating_status or self._boiler_status or self._dhw_status:
+            if self._cooling_status:
+                return HVAC_MODE_HEAT_COOL
+            return HVAC_MODE_HEAT
+        return HVAC_MODE_OFF
 
     @property
     def target_temperature(self):
@@ -268,9 +267,5 @@ class PwThermostat(ClimateDevice):
             self._cooling_status = data['cooling state']
         if 'domestic hot water state' in data:
             self._dhw_status = data['domestic hot water state']
-        if 'water temp' in data:
-            self._boiler_temperature = data['water temp']
-        if 'boiler pressure' in data:
-            self._water_pressure = data['boiler pressure']
-        if 'outdoor temp' in data:
-            self._outdoor_temperature = data['outdoor temp']
+
+
