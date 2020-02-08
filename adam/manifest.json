@@ -1,8 +1,0 @@
-{
-  "domain": "adam",
-  "name": "Plugwise Development Adam/Smile",
-  "documentation": "https://github.com/bouwew/plugwise",
-  "dependencies": [],
-  "codeowners": ["@bouwew","@laetificat","@CoMPaTech"],
-  "requirements": ["https://github.com/bouwew/plugwise/archive/master.zip#plugwise==0.0.7"]
-}
