@@ -99,7 +99,7 @@ class DataStore:
             data = None
 
             try:
-                data = self.api.get_device_data(id)
+                data = self.api.get_device_data(id, device['ctrl_id'])
                 _LOGGER.debug("Device data collected from Plugwise API")
             except RuntimeError:
                 _LOGGER.error("Unable to connect to the Plugwise API.")
@@ -124,6 +124,6 @@ class DataStore:
         """Wrap for get_devices()."""
         return self.api.get_devices()
 
-    def getDeviceData(self, id):
+    def getDeviceData(self, id, ctrl_id):
         """Wrap for get_device()."""
-        return self.api.get_device_data(id)
+        return self.api.get_device_data(id, ctrl_id)

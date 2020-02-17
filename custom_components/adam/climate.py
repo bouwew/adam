@@ -69,7 +69,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         if dev['name'] == 'Controlled Device':
             ctrl_id = dev['id']
         else:
-            device = create_climate_device(adam, hass, dev['name'], dev['id'], dev['type'], ctrl_id )
+            device = create_climate_device(adam, hass, dev['name'], dev['id'], ctrl_id )
             if not device:
                 continue
             climate_devices.append(device)
@@ -77,28 +77,28 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     if climate_devices:
         add_entities(climate_devices, True)
 
-def create_climate_device(adam, hass, name, dev_id, dev-type, ctlr_id):
+def create_climate_device(adam, hass, name, dev_id, ctlr_id):
     """Create a Adam climate device."""
-    device = PwThermostat(adam, name, dev_id, dev_type, ctlr_id, DEFAULT_MIN_TEMP, DEFAULT_MAX_TEMP)
+    device = PwThermostat(adam, name, dev_id, ctlr_id, DEFAULT_MIN_TEMP, DEFAULT_MAX_TEMP)
 
-    adam.add_device(dev_id, {"ctrl_id": ctlr_id, "name": name, "type": dev_type, "data": device})
+    adam.add_device(dev_id, {"ctrl_id": ctlr_id, "name": name, "data": device})
 
     return device
 
 class PwThermostat(ClimateDevice):
     """Representation of an Plugwise thermostat."""
 
-    def __init__(self, api, name, id, type, ctlr_id, min_temp, max_temp):
+    def __init__(self, api, name, dev_id, ctlr_id, min_temp, max_temp):
         """Set up the Plugwise API."""
         self._api = api
-        self._id = id
-        self._type = type
+        self._dev_id = dev_id
         self._ctrl_id = ctlr_id
 
         self._min_temp = min_temp
         self._max_temp = max_temp
         self._name = name
-        #self._outdoor_temp = None
+        self._outdoor_temp = None
+        self._dev_type = None
         self._selected_schema = None
         self._preset_mode = None
         self._presets = None
@@ -110,7 +110,7 @@ class PwThermostat(ClimateDevice):
         self._current_temp = None
         self._thermostat_temp = None
         self._boiler_temp = None
-        #self._water_pressure = None
+        self._water_pressure = None
         self._schedule_temp = None
         self._hvac_mode = None
 
@@ -142,14 +142,14 @@ class PwThermostat(ClimateDevice):
     def device_state_attributes(self):
         """Return the device specific state attributes."""
         attributes = {}
-        if self._outdoor_temperature:
-            attributes["outdoor_temperature"] = self._outdoor_temperature
+        if self._outdoor_temp:
+            attributes["outdoor_temperature"] = self._outdoor_temp
         if self._schema_names:
             attributes["available_schemas"] = self._schema_names
         if self._selected_schema:
             attributes["selected_schema"] = self._selected_schema
-        if self._boiler_temperature:
-            attributes["boiler_temperature"] = self._boiler_temperature
+        if self._boiler_temp:
+            attributes["boiler_temperature"] = self._boiler_temp
         if self._water_pressure:
             attributes["water_pressure"] = self._water_pressure
         return attributes
@@ -188,7 +188,7 @@ class PwThermostat(ClimateDevice):
         compared to the target_temperature-value. This way the information on the card
         is "immediately" updated after changing the preset, temperature, etc.
         """
-        return self._thermostat_temperature
+        return self._thermostat_temp
 
     @property
     def preset_mode(self):
@@ -197,14 +197,14 @@ class PwThermostat(ClimateDevice):
         """
         if self._presets:
             presets = self._presets
-            preset_temperature = presets.get(self._preset_mode, "none")
+            preset_temp = presets.get(self._preset_mode, "none")
             if self.hvac_mode == HVAC_MODE_AUTO:
-                if self._thermostat_temperature == self._schedule_temperature:
+                if self._thermostat_temp == self._schedule_temp:
                     return "{}".format(self._selected_schema)
-                if self._thermostat_temperature == preset_temperature:
+                if self._thermostat_temp == preset_temp:
                     return self._preset_mode
                 return "Temporary"
-            if self._thermostat_temperature != preset_temperature:
+            if self._thermostat_temp != preset_temp:
                 return "Manual"
             return self._preset_mode
         return None
@@ -212,7 +212,7 @@ class PwThermostat(ClimateDevice):
     @property
     def current_temperature(self):
         """Return the current room temperature."""
-        return self._current_temperature
+        return self._current_temp
 
     @property
     def min_temp(self):
@@ -233,16 +233,18 @@ class PwThermostat(ClimateDevice):
         """Update the state of this climate device."""
         self._api.update()
 
-        data = self._api.get_data(self._id)
+        data = self._api.get_data(self._dev_id)
 
         if data is None:
             _LOGGER.debug("Received no data for device %s", self._name)
             return
 
+        if 'type' in data:
+            self._dev_type = data['type']
         if 'setpoint_temp' in data:
-            self._thermostat_temperature = data['setpoint_temp']
+            self._thermostat_temp = data['setpoint_temp']
         if 'current_temp' in data:
-            self._current_temperature = data['current_temp']
+            self._current_temp = data['current_temp']
         if 'boiler_temp' in data:
             self._boiler_temp = data['boiler_temp']
         if 'available_schedules' in data:
@@ -251,7 +253,7 @@ class PwThermostat(ClimateDevice):
             self._selected_schema = data['selected_schedule']
             if self._selected_schema != "None":
                 self._schema_status = True
-                self._schedule_temperature = self._thermostat_temperature
+                self._schedule_temp = self._thermostat_temp
             else:
                 self._schema_status = False
         if 'last_used' in data:
@@ -262,11 +264,11 @@ class PwThermostat(ClimateDevice):
         if 'active_preset' in data:
             self._preset_mode = data['active_preset']
         if 'boiler_state' in data:
-            self._boiler_status = data['boiler state']
-        if 'central_heating _state' in data:
-            self._heating_status = data['central heating state']
+            self._boiler_status = data['boiler_state']
+        if 'central_heating_state' in data:
+            self._heating_status = data['central_heating_state']
         if 'cooling_state' in data:
-            self._cooling_status = data['cooling state']
+            self._cooling_status = data['cooling_state']
         if 'dhw_state' in data:
             self._dhw_status = data['dhw_state']
 
