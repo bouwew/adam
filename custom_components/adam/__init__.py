@@ -1,4 +1,4 @@
-"""Plugwise Adam Climate component for HomeAssistant."""
+"""Plugwise Adam Climate component for HomeAssistant- testing."""
 
 from datetime import timedelta
 import logging
