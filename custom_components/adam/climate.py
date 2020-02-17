@@ -36,7 +36,6 @@ CONF_MAX_TEMP = "max_temp"
 #DEFAULT_NAME = "Plugwise Adam Development Controller"
 DEFAULT_TIMEOUT = 10
 THERMOSTAT_ICON = "mdi:thermometer"
-DEVICE_ICON = "mdi:power"
 DEFAULT_MIN_TEMP = 4
 DEFAULT_MAX_TEMP = 30
 
@@ -65,12 +64,12 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
     climate_devices = []
     global controlled_device_id
-    controlled_device_id = None
+    ctrl_id = None
     for dev in devices:
         if dev['name'] == 'Controlled Device':
-            controlled_device_id = dev['id']
+            ctrl_id = dev['id']
         else:
-            device = create_climate_device(adam, hass, dev['name'], dev['id'], controlled_device_id )
+            device = create_climate_device(adam, hass, dev['name'], dev['id'], dev['type'], ctrl_id )
             if not device:
                 continue
             climate_devices.append(device)
@@ -78,27 +77,28 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     if climate_devices:
         add_entities(climate_devices, True)
 
-def create_climate_device(adam, hass, name, dev_id, ctlr_id):
+def create_climate_device(adam, hass, name, dev_id, dev-type, ctlr_id):
     """Create a Adam climate device."""
-    device = PwThermostat(adam, name, dev_id, ctlr_id, DEFAULT_MIN_TEMP, DEFAULT_MAX_TEMP)
+    device = PwThermostat(adam, name, dev_id, dev_type, ctlr_id, DEFAULT_MIN_TEMP, DEFAULT_MAX_TEMP)
 
-    adam.add_device(dev_id, {"ctrl_id": ctlr_id, "name": name, "data": device})
+    adam.add_device(dev_id, {"ctrl_id": ctlr_id, "name": name, "type": dev_type, "data": device})
 
     return device
 
 class PwThermostat(ClimateDevice):
     """Representation of an Plugwise thermostat."""
 
-    def __init__(self, api, name, data_id, ctlr_id, min_temp, max_temp):
+    def __init__(self, api, name, id, type, ctlr_id, min_temp, max_temp):
         """Set up the Plugwise API."""
         self._api = api
-        self._data_id = data_id
+        self._id = id
+        self._type = type
         self._ctrl_id = ctlr_id
 
         self._min_temp = min_temp
         self._max_temp = max_temp
         self._name = name
-        self._outdoor_temperature = None
+        #self._outdoor_temp = None
         self._selected_schema = None
         self._preset_mode = None
         self._presets = None
@@ -107,11 +107,11 @@ class PwThermostat(ClimateDevice):
         self._cooling_status = None
         self._schema_names = None
         self._schema_status = None
-        self._current_temperature = None
-        self._thermostat_temperature = None
-        self._boiler_temperature = None
-        self._water_pressure = None
-        self._schedule_temperature = None
+        self._current_temp = None
+        self._thermostat_temp = None
+        self._boiler_temp = None
+        #self._water_pressure = None
+        self._schedule_temp = None
         self._hvac_mode = None
 
     @property
@@ -233,39 +233,41 @@ class PwThermostat(ClimateDevice):
         """Update the state of this climate device."""
         self._api.update()
 
-        data = self._api.get_data(self._data_id)
+        data = self._api.get_data(self._id)
 
         if data is None:
             _LOGGER.debug("Received no data for device %s", self._name)
             return
 
-        if 'setpoint temp' in data:
-            self._thermostat_temperature = data['setpoint temp']
-        if 'current temp' in data:
-            self._current_temperature = data['current temp']
-        if 'available schedules' in data:
-            self._schema_names = data['available schedules']
-        if 'selected schedule' in data:
-            self._selected_schema = data['selected schedule']
+        if 'setpoint_temp' in data:
+            self._thermostat_temperature = data['setpoint_temp']
+        if 'current_temp' in data:
+            self._current_temperature = data['current_temp']
+        if 'boiler_temp' in data:
+            self._boiler_temp = data['boiler_temp']
+        if 'available_schedules' in data:
+            self._schema_names = data['available_schedules']
+        if 'selected_schedule' in data:
+            self._selected_schema = data['selected_schedule']
             if self._selected_schema != "None":
                 self._schema_status = True
                 self._schedule_temperature = self._thermostat_temperature
             else:
                 self._schema_status = False
-        if 'last used' in data:
-            self._last_active_schema = data['last used']
+        if 'last_used' in data:
+            self._last_active_schema = data['last_used']
         if 'presets' in data:
             self._presets = data['presets']
             self._presets_list = list(self._presets)
-        if 'active preset' in data:
-            self._preset_mode = data['active preset']
-        if 'boiler state' in data:
+        if 'active_preset' in data:
+            self._preset_mode = data['active_preset']
+        if 'boiler_state' in data:
             self._boiler_status = data['boiler state']
-        if 'central heating state' in data:
+        if 'central_heating _state' in data:
             self._heating_status = data['central heating state']
-        if 'cooling state' in data:
+        if 'cooling_state' in data:
             self._cooling_status = data['cooling state']
-        if 'domestic hot water state' in data:
-            self._dhw_status = data['domestic hot water state']
+        if 'dhw_state' in data:
+            self._dhw_status = data['dhw_state']
 
 

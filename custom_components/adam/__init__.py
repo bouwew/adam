@@ -1,4 +1,4 @@
-"""Plugwise Adam Climate component for HomeAssistant- testing."""
+"""Plugwise Adam Climate component for Home Assistant Core."""
 
 from datetime import timedelta
 import logging
@@ -95,28 +95,28 @@ class DataStore:
     @Throttle(SCAN_INTERVAL)
     def update(self):
         """Update the internal data from the API"""
-        for data_id, device in list(self.devices.items()):
+        for id, device in list(self.devices.items()):
             data = None
 
             try:
-                data = self.api.get_device_data(data_id, device['ctrl_id'])
+                data = self.api.get_device_data(id)
                 _LOGGER.debug("Device data collected from Plugwise API")
             except RuntimeError:
                 _LOGGER.error("Unable to connect to the Plugwise API.")
 
-            self.data[data_id] = data
+            self.data[id] = data
 
-    def add_device(self, data_id, device):
+    def add_device(self, id, device):
         """Add a sensor to update in _update()."""
-        self.devices[data_id] = device
-        self.data[data_id] = None
+        self.devices[id] = device
+        self.data[id] = None
 
-    def get_data(self, data_id):
+    def get_data(self, id):
         """Get the cached data."""
         data = {'error': 'no data'}
 
-        if data_id in self.data:
-            data = self.data[data_id]
+        if id in self.data:
+            data = self.data[id]
 
         return data
 
@@ -124,6 +124,6 @@ class DataStore:
         """Wrap for get_devices()."""
         return self.api.get_devices()
 
-    def getDeviceData(self, id, ctrl_id):
+    def getDeviceData(self, id):
         """Wrap for get_device()."""
-        return self.api.get_device_data(id, ctrl_id)
+        return self.api.get_device_data(id)
