@@ -124,6 +124,26 @@ class DataStore:
         """Wrap for get_devices()."""
         return self.api.get_devices()
 
+    def getDomainObj(self):
+        """Wrap for get_domain_objects()."""
+        return self.api.get_domain_objects()
+
     def getDeviceData(self, id, ctrl_id):
         """Wrap for get_device()."""
         return self.api.get_device_data(id, ctrl_id)
+
+    def setSchemaState(self, root, id, name, state):
+        """Wrap for get_schema_state()."""
+        return self.api.set_schema_state(root, id, name, state)
+        self.update(no_throttle=True)  # pylint: disable=unexpected-keyword-arg
+        
+    def setPreset(self, root, id, dev_type, preset):
+        """Wrap for set_preset()."""
+        return self.api.set_preset(root, id, dev_type, preset)
+        self.update(no_throttle=True)  # pylint: disable=unexpected-keyword-arg
+        
+    def setTemperature(self, root, id, dev_type, temperature):
+        """Wrap for set_temperature()."""
+        self.api.set_temperature(root, id, dev_type, temperature)
+        self.update(no_throttle=True)  # pylint: disable=unexpected-keyword-arg
+

@@ -8,12 +8,13 @@ import haanna
 import homeassistant.helpers.config_validation as cv
 from homeassistant.components.climate import PLATFORM_SCHEMA, ClimateDevice
 from homeassistant.components.climate.const import (
-    CURRENT_HVAC_HEAT,
     CURRENT_HVAC_COOL,
+    CURRENT_HVAC_HEAT,
     CURRENT_HVAC_IDLE,
+    HVAC_MODE_AUTO,
     HVAC_MODE_HEAT,
     HVAC_MODE_HEAT_COOL,
-    HVAC_MODE_AUTO,
+    HVAC_MODE_OFF,
     SUPPORT_PRESET_MODE,
     SUPPORT_TARGET_TEMPERATURE,
 )
@@ -96,10 +97,12 @@ class PwThermostat(ClimateDevice):
 
         self._min_temp = min_temp
         self._max_temp = max_temp
+        self._domain_objects = None
         self._name = name
         self._outdoor_temp = None
         self._dev_type = None
         self._selected_schema = None
+        self._last_active_schema = None
         self._preset_mode = None
         self._presets = None
         self._presets_list = None
@@ -228,15 +231,39 @@ class PwThermostat(ClimateDevice):
     def temperature_unit(self):
         """Return the unit of measured temperature."""
         return TEMP_CELSIUS
+        
+    def set_temperature(self, **kwargs):
+        """Set new target temperature."""
+        temperature = kwargs.get(ATTR_TEMPERATURE)
+        if (temperature is not None) and (self._min_temp < temperature < self._max_temp):
+            _LOGGER.debug("Adjusting temperature to %s °C.", temperature)
+            self._api.setTemperature(self._domain_objects, self._dev_id, self._dev_type, temperature)
+        else:
+            _LOGGER.error("Invalid temperature requested")
+
+    def set_hvac_mode(self, hvac_mode):
+        """Set the hvac mode."""
+        _LOGGER.debug("Adjusting hvac_mode (i.e. schedule/schema): %s, %s.", hvac_mode)
+        state = "false"
+        if hvac_mode == HVAC_MODE_AUTO:
+            state = "true"
+        self._api.setSchemaState(self._domain_objects, self._dev_id, self._last_active_schema, state)
+
+    def set_preset_mode(self, preset_mode):
+        _LOGGER.debug("Changing preset mode to %s.", preset_mode)
+        """Set the preset mode."""
+        self._api.setPreset(self._domain_objects, self._dev_id, self._dev_type, preset_mode)
 
     def update(self):
         """Update the state of this climate device."""
         self._api.update()
 
         data = self._api.get_data(self._dev_id)
+        
+        self._domain_objects = self._api.getDomainObj()
 
         if data is None:
-            _LOGGER.debug("Received no data for device %s", self._name)
+            _LOGGER.debug("Received no data for device %s.", self._name)
             return
 
         if 'type' in data:
@@ -251,7 +278,7 @@ class PwThermostat(ClimateDevice):
             self._schema_names = data['available_schedules']
         if 'selected_schedule' in data:
             self._selected_schema = data['selected_schedule']
-            if self._selected_schema != "None":
+            if self._selected_schema != None:
                 self._schema_status = True
                 self._schedule_temp = self._thermostat_temp
             else:
