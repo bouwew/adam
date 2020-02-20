@@ -97,7 +97,6 @@ class PwThermostat(ClimateDevice):
 
         self._min_temp = min_temp
         self._max_temp = max_temp
-        self._domain_objects = None
         self._name = name
         self._outdoor_temp = None
         self._dev_type = None
@@ -199,8 +198,7 @@ class PwThermostat(ClimateDevice):
         or Temporary in case of a manual change in the set-temperature.
         """
         if self._presets:
-            presets = self._presets
-            preset_temp = presets.get(self._preset_mode, "none")
+            preset_temp = self._presets.get(self._preset_mode, "none")[0]
             if self.hvac_mode == HVAC_MODE_AUTO:
                 if self._thermostat_temp == self._schedule_temp:
                     return "{}".format(self._selected_schema)
@@ -237,7 +235,7 @@ class PwThermostat(ClimateDevice):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if (temperature is not None) and (self._min_temp < temperature < self._max_temp):
             _LOGGER.debug("Adjusting temperature to %s °C.", temperature)
-            self._api.setTemperature(self._domain_objects, self._dev_id, self._dev_type, temperature)
+            self._api.setTemperature(self._dev_id, self._dev_type, temperature)
         else:
             _LOGGER.error("Invalid temperature requested")
 
@@ -247,20 +245,18 @@ class PwThermostat(ClimateDevice):
         state = "false"
         if hvac_mode == HVAC_MODE_AUTO:
             state = "true"
-        self._api.setSchemaState(self._domain_objects, self._dev_id, self._last_active_schema, state)
+        self._api.setScheduleState(self._dev_id, self._last_active_schema, state)
 
     def set_preset_mode(self, preset_mode):
         _LOGGER.debug("Changing preset mode to %s.", preset_mode)
         """Set the preset mode."""
-        self._api.setPreset(self._domain_objects, self._dev_id, self._dev_type, preset_mode)
+        self._api.setPreset(self._dev_id, self._dev_type, preset_mode)
 
     def update(self):
         """Update the state of this climate device."""
         self._api.update()
 
         data = self._api.get_data(self._dev_id)
-        
-        self._domain_objects = self._api.getDomainObj()
 
         if data is None:
             _LOGGER.debug("Received no data for device %s.", self._name)
