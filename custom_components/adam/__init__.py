@@ -117,16 +117,11 @@ class DataStore:
 
         if id in self.data:
             data = self.data[id]
-
         return data
 
     def getDevices(self):
         """Wrap for get_devices()."""
         return self.api.get_devices()
-
-    def getDomainObj(self):
-        """Wrap for get_domain_objects()."""
-        return self.api.get_domain_objects()
 
     def getDeviceData(self, id, ctrl_id):
         """Wrap for get_device()."""

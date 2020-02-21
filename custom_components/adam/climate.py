@@ -64,7 +64,6 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
 
     climate_devices = []
-    global controlled_device_id
     ctrl_id = None
     for dev in devices:
         if dev['name'] == 'Controlled Device':
@@ -92,12 +91,12 @@ class PwThermostat(ClimateDevice):
     def __init__(self, api, name, dev_id, ctlr_id, min_temp, max_temp):
         """Set up the Plugwise API."""
         self._api = api
+        self._name = name
         self._dev_id = dev_id
         self._ctrl_id = ctlr_id
-
         self._min_temp = min_temp
         self._max_temp = max_temp
-        self._name = name
+
         self._outdoor_temp = None
         self._dev_type = None
         self._selected_schema = None
