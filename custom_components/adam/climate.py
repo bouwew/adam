@@ -104,8 +104,10 @@ class PwThermostat(ClimateDevice):
         self._preset_mode = None
         self._presets = None
         self._presets_list = None
-        self._heating_status = None
+        self._boiler_status = None
         self._cooling_status = None
+        self._dhw_status = None
+        self._heating_status = None
         self._schema_names = None
         self._schema_status = None
         self._current_temp = None
