@@ -195,19 +195,8 @@ class PwThermostat(ClimateDevice):
 
     @property
     def preset_mode(self):
-        """Return the active selected schedule-name, or the (temporary) active preset
-        or Temporary in case of a manual change in the set-temperature.
-        """
+        """Return the active active preset."""
         if self._presets:
-            preset_temp = self._presets.get(self._preset_mode, "none")[0]
-            if self.hvac_mode == HVAC_MODE_AUTO:
-                if self._thermostat_temp == self._schedule_temp:
-                    return "{}".format(self._selected_schema)
-                if self._thermostat_temp == preset_temp:
-                    return self._preset_mode
-                return "Temporary"
-            if self._thermostat_temp != preset_temp:
-                return "Manual"
             return self._preset_mode
         return None
 
