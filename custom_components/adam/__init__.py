@@ -129,13 +129,16 @@ class DataStore:
 
     def setScheduleState(self, id, name, state):
         """Wrap for set_schedule_state()."""
-        return self.api.set_schedule_state(id, name, state)
+        self.api.set_schedule_state(id, name, state)
+        self.update(no_throttle=True)  # pylint: disable=unexpected-keyword-arg
         
     def setPreset(self, id, dev_type, preset):
         """Wrap for set_preset()."""
-        return self.api.set_preset(id, dev_type, preset)
+        self.api.set_preset(id, dev_type, preset)
+        self.update(no_throttle=True)  # pylint: disable=unexpected-keyword-arg
         
     def setTemperature(self, id, dev_type, temperature):
         """Wrap for set_temperature()."""
         self.api.set_temperature(id, dev_type, temperature)
+        self.update(no_throttle=True)  # pylint: disable=unexpected-keyword-arg
 
