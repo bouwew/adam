@@ -195,7 +195,7 @@ class PwThermostat(ClimateDevice):
 
     @property
     def preset_mode(self):
-        """Return the active active preset."""
+        """Return the active preset."""
         if self._presets:
             return self._preset_mode
         return None

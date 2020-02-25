@@ -123,10 +123,6 @@ class DataStore:
         """Wrap for get_devices()."""
         return self.api.get_devices()
 
-    def getDeviceData(self, id, ctrl_id):
-        """Wrap for get_device()."""
-        return self.api.get_device_data(id, ctrl_id)
-
     def setScheduleState(self, id, name, state):
         """Wrap for set_schedule_state()."""
         self.api.set_schedule_state(id, name, state)
