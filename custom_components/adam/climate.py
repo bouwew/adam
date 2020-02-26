@@ -97,7 +97,7 @@ class PwThermostat(ClimateDevice):
         self._min_temp = min_temp
         self._max_temp = max_temp
 
-        self._outdoor_temp = None
+        self._domain_obj = None
         self._dev_type = None
         self._selected_schema = None
         self._last_active_schema = None
@@ -145,8 +145,6 @@ class PwThermostat(ClimateDevice):
     def device_state_attributes(self):
         """Return the device specific state attributes."""
         attributes = {}
-        if self._outdoor_temp:
-            attributes["outdoor_temperature"] = self._outdoor_temp
         if self._schema_names:
             attributes["available_schemas"] = self._schema_names
         if self._selected_schema:
@@ -225,7 +223,7 @@ class PwThermostat(ClimateDevice):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if (temperature is not None) and (self._min_temp < temperature < self._max_temp):
             _LOGGER.debug("Adjusting temperature to %s degrees C.", temperature)
-            self._api.setTemperature(self._dev_id, self._dev_type, temperature)
+            self._api.setTemperature(self._domain_obj, self._dev_id, self._dev_type, temperature)
         else:
             _LOGGER.error("Invalid temperature requested")
 
@@ -235,17 +233,18 @@ class PwThermostat(ClimateDevice):
         state = "false"
         if hvac_mode == HVAC_MODE_AUTO:
             state = "true"
-        self._api.setScheduleState(self._dev_id, self._last_active_schema, state)
+        self._api.setScheduleState(self._domain_obj, self._dev_id, self._last_active_schema, state)
 
     def set_preset_mode(self, preset_mode):
         _LOGGER.debug("Changing preset mode to %s.", preset_mode)
         """Set the preset mode."""
-        self._api.setPreset(self._dev_id, self._dev_type, preset_mode)
+        self._api.setPreset(self._domain_obj, self._dev_id, self._dev_type, preset_mode)
 
     def update(self):
         """Update the state of this climate device."""
         self._api.update()
 
+        self._domain_obj = self._api.get_domain_data()
         data = self._api.get_data(self._dev_id)
 
         if data is None:

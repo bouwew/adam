@@ -90,20 +90,25 @@ class DataStore:
         self.api = api
 
         self.devices = {}
+        self.domain_objects = None
         self.data = {}
+
 
     @Throttle(SCAN_INTERVAL)
     def update(self):
         """Update the internal data from the API"""
+        try:
+            appliances = self.api.get_appliances()
+            domain_objects = self.api.get_domain_objects()
+            _LOGGER.debug("Device data collected from Plugwise API")
+        except RuntimeError:
+            _LOGGER.error("Unable to connect to the Plugwise API.")
+
+        self.domain_objects = domain_objects
+
         for id, device in list(self.devices.items()):
-            data = None
-
-            try:
-                data = self.api.get_device_data(id, device['ctrl_id'])
-                _LOGGER.debug("Device data collected from Plugwise API")
-            except RuntimeError:
-                _LOGGER.error("Unable to connect to the Plugwise API.")
-
+            #data = None
+            data = self.api.get_device_data(appliances, domain_objects, id, device['ctrl_id'])
             self.data[id] = data
 
     def add_device(self, id, device):
@@ -119,22 +124,27 @@ class DataStore:
             data = self.data[id]
         return data
 
+    def get_domain_data(self):
+        """Get the cached domain_objects data."""
+        domain = self.domain_objects
+        return domain
+
     def getDevices(self):
         """Wrap for get_devices()."""
         return self.api.get_devices()
 
-    def setScheduleState(self, id, name, state):
+    def setScheduleState(self, domain_obj, id, name, state):
         """Wrap for set_schedule_state()."""
-        self.api.set_schedule_state(id, name, state)
+        self.api.set_schedule_state(domain_obj, id, name, state)
         self.update(no_throttle=True)  # pylint: disable=unexpected-keyword-arg
         
-    def setPreset(self, id, dev_type, preset):
+    def setPreset(self, domain_obj, id, dev_type, preset):
         """Wrap for set_preset()."""
-        self.api.set_preset(id, dev_type, preset)
+        self.api.set_preset(domain_obj, id, dev_type, preset)
         self.update(no_throttle=True)  # pylint: disable=unexpected-keyword-arg
         
-    def setTemperature(self, id, dev_type, temperature):
+    def setTemperature(self, domain_obj, id, dev_type, temperature):
         """Wrap for set_temperature()."""
-        self.api.set_temperature(id, dev_type, temperature)
+        self.api.set_temperature(domain_obj, id, dev_type, temperature)
         self.update(no_throttle=True)  # pylint: disable=unexpected-keyword-arg
 
