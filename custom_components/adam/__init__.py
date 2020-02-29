@@ -8,7 +8,7 @@ import plugwise
 from homeassistant.helpers import discovery
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers import config_validation as cv
-from homeassistant.components.climate import PLATFORM_SCHEMA, ClimateDevice
+from homeassistant.components.climate import ClimateDevice
 from homeassistant.components.climate.const import (
     CURRENT_HVAC_COOL,
     CURRENT_HVAC_HEAT,
@@ -22,13 +22,12 @@ from homeassistant.components.climate.const import (
 )
 
 from homeassistant.const import (
+    ATTR_TEMPERATURE,
     CONF_HOST,
     CONF_NAME,
     CONF_PASSWORD,
     CONF_PORT,
-    CONF_SCAN_INTERVAL,
     CONF_USERNAME,
-    ATTR_TEMPERATURE,
     TEMP_CELSIUS,
 )
 
@@ -48,8 +47,7 @@ DEFAULT_PORT = 80
 DEFAULT_ICON = "mdi:thermometer"
 DEFAULT_MIN_TEMP = 4
 DEFAULT_MAX_TEMP = 30
-DOMAIN = 'plugwise_dev'
-CONF_ADAM = 'adam'
+DOMAIN = 'adam'
 
 # HVAC modes
 HVAC_MODES_1 = [HVAC_MODE_HEAT, HVAC_MODE_AUTO]
@@ -58,30 +56,36 @@ HVAC_MODES_2 = [HVAC_MODE_HEAT_COOL, HVAC_MODE_AUTO]
 SUPPORT_FLAGS = (SUPPORT_TARGET_TEMPERATURE | SUPPORT_PRESET_MODE)
 
 # Read configuration
-ADAM_CONFIG = vol.Schema(
-        {
-            vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-            vol.Required(CONF_PASSWORD): cv.string,
-            vol.Required(CONF_HOST): cv.string,
-            vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-            vol.Optional(CONF_USERNAME, default=DEFAULT_USERNAME): cv.string,
-        }
-)
+#ADAM_CONFIG = vol.Schema(
+#        {
+#            vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
+#            vol.Required(CONF_PASSWORD): cv.string,
+#            vol.Required(CONF_HOST): cv.string,
+#            vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
+#            vol.Optional(CONF_USERNAME, default=DEFAULT_USERNAME): cv.string,
+#        }
+#)
 
 # Read platform configuration
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
-        {
-                vol.Optional(CONF_ADAM): vol.All(
-                    cv.ensure_list,
-                    [
-                        vol.All(
-                            cv.ensure_list, [ADAM_CONFIG],
-                        ),
-                    ],
-                )
+            {
+                vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
+                vol.Required(CONF_PASSWORD): cv.string,
+                vol.Required(CONF_HOST): cv.string,
+                vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
+                vol.Optional(CONF_USERNAME, default=DEFAULT_USERNAME): cv.string,
+#                vol.Optional(CONF_ADAM): vol.All(
+#                    cv.ensure_list,
+#                    [
+#                        vol.All(
+#                            cv.ensure_list, [ADAM_CONFIG],
+#                        ),
+#                    ],
             }
+#                )
+#            }
         )
     },
     extra=vol.ALLOW_EXTRA,
@@ -93,35 +97,34 @@ def setup(hass, config):
 
     if conf is None:
         raise PlatformNotReady
-        #conf = {}
 
     _LOGGER.info('Plugwise %s',conf)
     hass.data[DOMAIN] = {}
 
-    if CONF_ADAM in conf:
-        adams = conf[CONF_ADAM]
+#    if CONF_ADAM in conf:
+#        adams = conf[CONF_ADAM]
 
-        _LOGGER.info('Adams %s', adams)
-        hass.data[DOMAIN][CONF_ADAM] = {}
+#    _LOGGER.info('Adams %s', adams)
+#    hass.data[DOMAIN] = {}
 
-        for adam in adams:
-            _LOGGER.info('Adam %s', adam)
-            adam_config=adam[0]
+#        for adam in adams:
+#            _LOGGER.info('Adam %s', adam)
+#            adam_config=adam[0]
 
-            api = plugwise.Plugwise(
-                adam_config[CONF_USERNAME],
-                adam_config[CONF_PASSWORD],
-                adam_config[CONF_HOST],
-                adam_config[CONF_PORT],
-            )
+    api = plugwise.Plugwise(
+            conf[CONF_USERNAME],
+            conf[CONF_PASSWORD],
+            conf[CONF_HOST],
+            conf[CONF_PORT],
+    )
 
-            try:
-                api.ping_gateway()
-            except OSError:
-                _LOGGER.debug("Ping failed, retrying later", exc_info=True)
-                raise PlatformNotReady
+    try:
+        api.ping_gateway()
+    except OSError:
+        _LOGGER.debug("Ping failed, retrying later", exc_info=True)
+        raise PlatformNotReady
 
-            hass.data[DOMAIN][CONF_ADAM][adam_config[CONF_NAME]] = { 'api': api }
+    hass.data[DOMAIN][conf[CONF_NAME]] = { 'api': api }
 
     hass.helpers.discovery.load_platform('climate', DOMAIN, {}, config)
     _LOGGER.info('Config %s', hass.data[DOMAIN])

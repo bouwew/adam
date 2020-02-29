@@ -1,7 +1,7 @@
 {
-  "domain": "plugwise_dev",
+  "domain": "adam",
   "name": "Plugwise Development Multiplatform",
-  "documentation": "https://github.com/bouwew/plugwise",
+  "documentation": "https://github.com/bouwew/adam",
   "dependencies": [],
   "codeowners": ["@bouwew","@laetificat","@CoMPaTech"],
   "requirements": ["https://github.com/bouwew/plugwise/archive/devel.zip#plugwise==0.0.40"]

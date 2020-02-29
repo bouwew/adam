@@ -24,7 +24,6 @@ from homeassistant.const import (
 )
 from . import (
     DOMAIN,
-    CONF_ADAM,
     CONF_MIN_TEMP,
     CONF_MAX_TEMP,
     DEFAULT_MIN_TEMP,
@@ -52,7 +51,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
     devices = []
     ctrl_id = None
-    for device,thermostat in hass.data[DOMAIN][CONF_ADAM].items():
+    for device,thermostat in hass.data[DOMAIN].items():
         _LOGGER.info('Device %s',device)
         _LOGGER.info('Thermostat %s',thermostat)
         try:
@@ -69,5 +68,4 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 if not device:
                     continue
                 devices.append(device)
-    add_entities(devices)
-
+    add_entities(devices, True)
