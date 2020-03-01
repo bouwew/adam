@@ -127,9 +127,72 @@ def setup(hass, config):
     hass.data[DOMAIN][conf[CONF_NAME]] = { 'api': api }
 
     hass.helpers.discovery.load_platform('climate', DOMAIN, {}, config)
+    hass.helpers.discovery.load_platform('sensor', DOMAIN, {}, config)
     _LOGGER.info('Config %s', hass.data[DOMAIN])
     return True
 
+
+class PwThermostatSensor(Entity):
+    """Representation of a Plugwise thermostat sensor."""
+
+    def __init__(self, api, name, dev_id, ctlr_id, sensor, sensor_type):
+        """Set up the Plugwise API."""
+        self._api = api
+        self._name = name
+        self._dev_id = dev_id
+        self._ctrl_id = ctlr_id
+        self._sensor = sensor
+        self._sensor_type = sensor_type
+        self._domain_objects = None
+        self._state = None
+
+    @property
+    def name(self):
+        """Return the name of the thermostat, if any."""
+        return self._name
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._state
+
+#    @property
+#    def device_state_attributes(self):
+#        """Return the state attributes."""
+#        return self._state_attributes
+
+    @property
+    def unit_of_measurement(self):
+        """Return the unit of measurement."""
+        if self._sensor_type == "temperature":
+            return self.hass.config.units.temperature_unit
+        if self._sensor_type == "battery_level":
+            return "%"
+
+    @property
+    def icon(self):
+        """Icon for the sensor."""
+        if self._sensor_type == "temperature":
+            return "mdi:thermometer"
+        if self._sensor_type == "battery_level":
+            return "mdi:water-battery"
+
+    def update(self):
+        """Update the data from the thermostat."""
+        _LOGGER.debug("Update sensor called")
+        self._appliances = self._api.get_appliances()
+        self._domain_obj = self._api.get_domain_objects()
+        data = self._api.get_device_data(self._appliances, self._domain_obj, self._dev_id, self._ctrl_id)
+
+        if data is None:
+            _LOGGER.debug("Received no data for device %s.", self._name)
+            return
+
+        _LOGGER.info("Sensor {}".format(self._sensor))
+        if self._sensor == 'boiler_temperature':
+            self._state = data['boiler_temp']
+        if self._sensor == 'battery_charge':
+            self._state = data['battery']
 
 class PwThermostat(ClimateDevice):
     """Representation of an Plugwise thermostat."""
