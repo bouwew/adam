@@ -28,6 +28,8 @@ from homeassistant.const import (
     CONF_PASSWORD,
     CONF_PORT,
     CONF_USERNAME,
+    DEVICE_CLASS_BATTERY,
+    DEVICE_CLASS_TEMPERATURE,
     TEMP_CELSIUS,
 )
 
@@ -143,6 +145,7 @@ class PwThermostatSensor(Entity):
         self._name = name
         self._dev_id = dev_id
         self._ctrl_id = ctlr_id
+        self._device = sensor_type[2]
         self._sensor = sensor
         self._sensor_type = sensor_type
         self._domain_objects = None
@@ -157,6 +160,14 @@ class PwThermostatSensor(Entity):
     def state(self):
         """Return the state of the sensor."""
         return self._state
+
+    @property
+    def device_class(self):
+        """Device class of this entity."""
+        if self._sensor_type == "temperature":
+            return DEVICE_CLASS_TEMPERATURE
+        if self._sensor_type == "battery_level":
+            return DEVICE_CLASS_BATTERY
 
 #    @property
 #    def device_state_attributes(self):
@@ -194,8 +205,8 @@ class PwThermostatSensor(Entity):
         if self._sensor == 'boiler_temperature':
             self._state = data['boiler_temp']
         if self._sensor == 'battery_charge':
-            self._state = data['battery']
-
+            value = data['battery']
+            self._state = int(round(value * 100))
 
 class PwWaterHeater(Entity):
     """Representation of a Plugwise water_heater."""
