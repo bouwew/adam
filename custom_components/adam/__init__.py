@@ -44,7 +44,8 @@ DEFAULT_NAME = "Adam"
 DEFAULT_USERNAME = "smile"
 DEFAULT_TIMEOUT = 10
 DEFAULT_PORT = 80
-DEFAULT_ICON = "mdi:thermometer"
+THERMOSTAT_ICON = "mdi:thermometer"
+WATER_HEATER_ICON = "mdi:thermometer"
 DEFAULT_MIN_TEMP = 4
 DEFAULT_MAX_TEMP = 30
 DOMAIN = 'adam'
@@ -128,6 +129,7 @@ def setup(hass, config):
 
     hass.helpers.discovery.load_platform('climate', DOMAIN, {}, config)
     hass.helpers.discovery.load_platform('sensor', DOMAIN, {}, config)
+    hass.helpers.discovery.load_platform('water_heater', DOMAIN, {}, config)
     _LOGGER.info('Config %s', hass.data[DOMAIN])
     return True
 
@@ -194,6 +196,65 @@ class PwThermostatSensor(Entity):
         if self._sensor == 'battery_charge':
             self._state = data['battery']
 
+
+class PwWaterHeater(Entity):
+    """Representation of a Plugwise water_heater."""
+
+    def __init__(self, api, name, dev_id, ctlr_id):
+        """Set up the Plugwise API."""
+        self._api = api
+        self._name = name
+        self._dev_id = dev_id
+        self._ctrl_id = ctlr_id
+        self._appliances = None
+        self._domain_obj = None
+        self._heating_status =  None 
+        self._boiler_status = None
+        self._dhw_status = None
+
+    @property
+    def name(self):
+        """Return the name of the thermostat, if any."""
+        return self._name
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        if self._heating_status or self._boiler_status or self._dhw_status:
+            return CURRENT_HVAC_HEAT
+        return CURRENT_HVAC_IDLE
+
+    @property
+    def device_state_attributes(self):
+        """Return the device specific state attributes."""
+        attributes = {}
+        if self._dhw_status:
+            attributes["domestic_hot_water"] = self._dhw_status
+        return attributes
+
+    @property
+    def icon(self):
+        """Return the icon to use in the frontend."""
+        return WATER_HEATER_ICON
+
+    def update(self):
+        """Update the data from the water_heater."""
+        _LOGGER.debug("Update water_heater called")
+        self._appliances = self._api.get_appliances()
+        self._domain_obj = self._api.get_domain_objects()
+        data = self._api.get_device_data(self._appliances, self._domain_obj, self._dev_id, self._ctrl_id)
+
+        if data is None:
+            _LOGGER.debug("Received no data for device %s.", self._name)
+            return
+        if 'central_heating_state' in data:
+            self._heating_status =  data['central_heating_state'] 
+        if 'boiler_state' in data:
+            self._boiler_status = data['boiler_state'] 
+        if 'dhw_state' in data:
+            self._dhw_status = data['dhw_state'] 
+
+
 class PwThermostat(ClimateDevice):
     """Representation of an Plugwise thermostat."""
 
@@ -244,7 +305,7 @@ class PwThermostat(ClimateDevice):
     @property
     def icon(self):
         """Return the icon to use in the frontend."""
-        return DEFAULT_ICON
+        return THERMOSTAT_ICON
 
     @property
     def supported_features(self):
