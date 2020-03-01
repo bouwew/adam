@@ -4,5 +4,5 @@
   "documentation": "https://github.com/bouwew/adam",
   "dependencies": [],
   "codeowners": ["@bouwew","@laetificat","@CoMPaTech"],
-  "requirements": ["https://github.com/bouwew/plugwise/archive/devel.zip#plugwise==0.0.43"]
+  "requirements": ["https://github.com/bouwew/plugwise/archive/master.zip#plugwise==0.0.43"]
 }
