@@ -417,7 +417,7 @@ class PwThermostat(ClimateDevice):
     def set_preset_mode(self, preset_mode):
         _LOGGER.debug("Changing preset mode to %s.", preset_mode)
         """Set the preset mode."""
-        self._api.set_preset(self._domain_obj, self._dev_id, self._dev_type, preset_mode)
+        self._api.set_preset(self._dev_id, self._dev_type, preset_mode)
 
     def update(self):
         """Update the data for this climate device."""
