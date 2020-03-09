@@ -28,8 +28,11 @@ from homeassistant.const import (
     CONF_PASSWORD,
     CONF_PORT,
     CONF_USERNAME,
-    DEVICE_CLASS_BATTERY,
+    DEVICE_CLASS_ILLUMINANCE,
     DEVICE_CLASS_TEMPERATURE,
+    DEVICE_CLASS_BATTERY,
+    DEVICE_CLASS_PRESSURE,
+    PRESSURE_MBAR,
     TEMP_CELSIUS,
 )
 
@@ -51,6 +54,7 @@ WATER_HEATER_ICON = "mdi:thermometer"
 DEFAULT_MIN_TEMP = 4
 DEFAULT_MAX_TEMP = 30
 DOMAIN = 'adam'
+CURRENT_HVAC_DHW = "dhw"
 
 # HVAC modes
 HVAC_MODES_1 = [HVAC_MODE_HEAT, HVAC_MODE_AUTO]
@@ -168,6 +172,10 @@ class PwThermostatSensor(Entity):
             return DEVICE_CLASS_TEMPERATURE
         if self._sensor_type == "battery_level":
             return DEVICE_CLASS_BATTERY
+        if self._sensor_type == "illuminance":
+            return DEVICE_CLASS_ILLUMINANCE
+        if self._sensor_type == "pressure":
+            return DEVICE_CLASS_PRESSURE
 
 #    @property
 #    def device_state_attributes(self):
@@ -181,6 +189,10 @@ class PwThermostatSensor(Entity):
             return self.hass.config.units.temperature_unit
         if self._sensor_type == "battery_level":
             return "%"
+        if self._sensor_type == "illuminance":
+            return "lm"
+        if self._sensor_type == "pressure":
+            return PRESSURE_MBAR
 
     @property
     def icon(self):
@@ -189,6 +201,10 @@ class PwThermostatSensor(Entity):
             return "mdi:thermometer"
         if self._sensor_type == "battery_level":
             return "mdi:water-battery"
+        if self._sensor_type == "illuminance":
+            return "mdi:lightbulb-on-outline"
+        if self._sensor_type == "pressure":
+            return "mdi:water"
 
     def update(self):
         """Update the data from the thermostat."""
@@ -203,10 +219,22 @@ class PwThermostatSensor(Entity):
 
         _LOGGER.info("Sensor {}".format(self._sensor))
         if self._sensor == 'boiler_temperature':
-            self._state = data['boiler_temp']
+            if 'boiler_temp' in data:
+                self._state = data['boiler_temp']
+        if self._sensor == 'water_pressure':
+            if 'water_pressure' in data:
+                self._state = data['water_pressure']
         if self._sensor == 'battery_charge':
-            value = data['battery']
-            self._state = int(round(value * 100))
+            if 'battery' in data:
+                value = data['battery']
+                self._state = int(round(value * 100))
+        if self._sensor == 'outdoor_temperature':
+            if 'outdoor_temp' in data:
+                self._state = data['outdoor_temp']
+        if self._sensor == 'illuminance':
+            if 'illuminance' in data:
+                self._state = data['illuminance']
+
 
 class PwWaterHeater(Entity):
     """Representation of a Plugwise water_heater."""
@@ -231,17 +259,11 @@ class PwWaterHeater(Entity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        if self._heating_status or self._boiler_status or self._dhw_status:
+        if self._heating_status or self._boiler_status:
             return CURRENT_HVAC_HEAT
-        return CURRENT_HVAC_IDLE
-
-    @property
-    def device_state_attributes(self):
-        """Return the device specific state attributes."""
-        attributes = {}
         if self._dhw_status:
-            attributes["domestic_hot_water"] = self._dhw_status
-        return attributes
+            return CURRENT_HVAC_DHW
+        return CURRENT_HVAC_IDLE
 
     @property
     def icon(self):

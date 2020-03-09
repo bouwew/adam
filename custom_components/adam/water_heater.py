@@ -57,7 +57,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             if dev['name'] == 'Controlled Device':
                 ctrl_id = dev['id']
                 dev_id = None
-                name = dev['name']
+                name = 'adam'
                 _LOGGER.info('Name %s', name)
                 data = api.get_device_data(appliances, domain_obj, dev_id, ctrl_id)
 
@@ -65,7 +65,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                     _LOGGER.debug("Received no data for device %s.", name)
                     return
 
-                device = PwWaterHeater(api, dev['name'], dev_id, ctrl_id)
+                device = PwWaterHeater(api, name, dev_id, ctrl_id)
                 if not device:
                     continue
                 devices.append(device)
