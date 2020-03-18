@@ -133,6 +133,7 @@ def setup(hass, config):
 
     hass.data[DOMAIN][conf[CONF_NAME]] = { 'api': api }
 
+    api.full_update_device()
     hass.helpers.discovery.load_platform('climate', DOMAIN, {}, config)
     hass.helpers.discovery.load_platform('sensor', DOMAIN, {}, config)
     hass.helpers.discovery.load_platform('water_heater', DOMAIN, {}, config)
@@ -152,7 +153,6 @@ class PwThermostatSensor(Entity):
         self._device = sensor_type[2]
         self._sensor = sensor
         self._sensor_type = sensor_type
-        self._domain_objects = None
         self._state = None
 
     @property
@@ -209,31 +209,29 @@ class PwThermostatSensor(Entity):
     def update(self):
         """Update the data from the thermostat."""
         _LOGGER.debug("Update sensor called")
-        self._appliances = self._api.get_appliances()
-        self._domain_obj = self._api.get_domain_objects()
-        data = self._api.get_device_data(self._appliances, self._domain_obj, self._dev_id, self._ctrl_id, None)
+        self._api.full_update_device()
+        data = self._api.get_device_data(self._dev_id, self._ctrl_id, None)
 
         if data is None:
             _LOGGER.debug("Received no data for device %s.", self._name)
-            return
-
-        _LOGGER.info("Sensor {}".format(self._sensor))
-        if self._sensor == 'boiler_temperature':
-            if 'boiler_temp' in data:
-                self._state = data['boiler_temp']
-        if self._sensor == 'water_pressure':
-            if 'water_pressure' in data:
-                self._state = data['water_pressure']
-        if self._sensor == 'battery_charge':
-            if 'battery' in data:
-                value = data['battery']
-                self._state = int(round(value * 100))
-        if self._sensor == 'outdoor_temperature':
-            if 'outdoor_temp' in data:
-                self._state = data['outdoor_temp']
-        if self._sensor == 'illuminance':
-            if 'illuminance' in data:
-                self._state = data['illuminance']
+        else:
+            _LOGGER.info("Sensor {}".format(self._sensor))
+            if self._sensor == 'boiler_temperature':
+                if 'boiler_temp' in data:
+                    self._state = data['boiler_temp']
+            if self._sensor == 'water_pressure':
+                if 'water_pressure' in data:
+                    self._state = data['water_pressure']
+            if self._sensor == 'battery_charge':
+                if 'battery' in data:
+                    value = data['battery']
+                    self._state = int(round(value * 100))
+            if self._sensor == 'outdoor_temperature':
+                if 'outdoor_temp' in data:
+                    self._state = data['outdoor_temp']
+            if self._sensor == 'illuminance':
+                if 'illuminance' in data:
+                    self._state = data['illuminance']
 
 
 class PwWaterHeater(Entity):
@@ -245,8 +243,6 @@ class PwWaterHeater(Entity):
         self._name = name
         self._dev_id = dev_id
         self._ctrl_id = ctlr_id
-        self._appliances = None
-        self._domain_obj = None
         self._heating_status =  None 
         self._boiler_status = None
         self._dhw_status = None
@@ -273,19 +269,18 @@ class PwWaterHeater(Entity):
     def update(self):
         """Update the data from the water_heater."""
         _LOGGER.debug("Update water_heater called")
-        self._appliances = self._api.get_appliances()
-        self._domain_obj = self._api.get_domain_objects()
-        data = self._api.get_device_data(self._appliances, self._domain_obj, self._dev_id, self._ctrl_id, None)
+        self._api.full_update_device()
+        data = self._api.get_device_data(self._dev_id, self._ctrl_id, None)
 
         if data is None:
             _LOGGER.debug("Received no data for device %s.", self._name)
-            return
-        if 'central_heating_state' in data:
-            self._heating_status =  data['central_heating_state'] 
-        if 'boiler_state' in data:
-            self._boiler_status = data['boiler_state'] 
-        if 'dhw_state' in data:
-            self._dhw_status = data['dhw_state'] 
+        else:
+            if 'central_heating_state' in data:
+                self._heating_status =  data['central_heating_state'] 
+            if 'boiler_state' in data:
+                self._boiler_status = data['boiler_state'] 
+            if 'dhw_state' in data:
+                self._dhw_status = data['dhw_state'] 
 
 
 class PwThermostat(ClimateDevice):
@@ -300,8 +295,6 @@ class PwThermostat(ClimateDevice):
         self._min_temp = min_temp
         self._max_temp = max_temp
 
-        self._appliances = None
-        self._domain_obj = None
         self._dev_type = None
         self._selected_schema = None
         self._last_active_schema = None
@@ -424,64 +417,63 @@ class PwThermostat(ClimateDevice):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if (temperature is not None) and (self._min_temp < temperature < self._max_temp):
             _LOGGER.debug("Adjusting temperature to %s degrees C.", temperature)
-            self._api.set_temperature(self._domain_obj, self._dev_id, self._dev_type, temperature)
+            self._api.set_temperature(self._dev_id, self._dev_type, temperature)
         else:
             _LOGGER.error("Invalid temperature requested")
 
     def set_hvac_mode(self, hvac_mode):
         """Set the hvac mode."""
-        _LOGGER.debug("Adjusting hvac_mode (i.e. schedule/schema): %s, %s.", hvac_mode)
+        _LOGGER.debug("Adjusting hvac_mode to %s", hvac_mode)
         state = "false"
         if hvac_mode == HVAC_MODE_AUTO:
             state = "true"
-        self._api.set_schedule_state(self._domain_obj, self._dev_id, self._last_active_schema, state)
+        self._api.set_schedule_state(self._dev_id, self._last_active_schema, state)
 
     def set_preset_mode(self, preset_mode):
-        _LOGGER.debug("Changing preset mode to %s.", preset_mode)
+        _LOGGER.debug("Adjusting preset to %s", preset_mode)
         """Set the preset mode."""
         self._api.set_preset(self._dev_id, self._dev_type, preset_mode)
 
     def update(self):
         """Update the data for this climate device."""
         _LOGGER.debug("Update climate called")
-        self._appliances = self._api.get_appliances()
-        self._domain_obj = self._api.get_domain_objects()
-        data = self._api.get_device_data(self._appliances, self._domain_obj, self._dev_id, self._ctrl_id, None)
+        self._api.full_update_device()
+        data = self._api.get_device_data(self._dev_id, self._ctrl_id, None)
 
         if data is None:
             _LOGGER.debug("Received no data for device %s.", self._name)
-            return
-            
-        _LOGGER.debug("Device data collected from Plugwise API")
-        if 'type' in data:
-            self._dev_type = data['type']
-        if 'setpoint_temp' in data:
-            self._thermostat_temp = data['setpoint_temp']
-        if 'current_temp' in data:
-            self._current_temp = data['current_temp']
-        if 'boiler_temp' in data:
-            self._boiler_temp = data['boiler_temp']
-        if 'available_schedules' in data:
-            self._schema_names = data['available_schedules']
-        if 'selected_schedule' in data:
-            self._selected_schema = data['selected_schedule']
-            if self._selected_schema != None:
-                self._schema_status = True
-                self._schedule_temp = self._thermostat_temp
-            else:
-                self._schema_status = False
-        if 'last_used' in data:
-            self._last_active_schema = data['last_used']
-        if 'presets' in data:
-            self._presets = data['presets']
-            self._presets_list = list(self._presets)
-        if 'active_preset' in data:
-            self._preset_mode = data['active_preset']
-        if 'boiler_state' in data:
-            self._boiler_status = data['boiler_state']
-        if 'central_heating_state' in data:
-            self._heating_status = data['central_heating_state']
-        if 'cooling_state' in data:
-            self._cooling_status = data['cooling_state']
-        if 'dhw_state' in data:
-            self._dhw_status = data['dhw_state']
+        else:            
+            _LOGGER.debug("Device data collected from Plugwise API")
+            if 'type' in data:
+                self._dev_type = data['type']
+            if 'setpoint_temp' in data:
+                self._thermostat_temp = data['setpoint_temp']
+            if 'current_temp' in data:
+                self._current_temp = data['current_temp']
+            if 'boiler_temp' in data:
+                self._boiler_temp = data['boiler_temp']
+            if 'available_schedules' in data:
+                self._schema_names = data['available_schedules']
+            if 'selected_schedule' in data:
+                self._selected_schema = data['selected_schedule']
+                if self._selected_schema != None:
+                    self._schema_status = True
+                    self._schedule_temp = self._thermostat_temp
+                else:
+                    self._schema_status = False
+            if 'last_used' in data:
+                self._last_active_schema = data['last_used']
+            if 'presets' in data:
+                self._presets = data['presets']
+                if self._presets:
+                    self._presets_list = list(self._presets)
+            if 'active_preset' in data:
+                self._preset_mode = data['active_preset']
+            if 'boiler_state' in data:
+                self._boiler_status = data['boiler_state']
+            if 'central_heating_state' in data:
+                self._heating_status = data['central_heating_state']
+            if 'cooling_state' in data:
+                self._cooling_status = data['cooling_state']
+            if 'dhw_state' in data:
+                self._dhw_status = data['dhw_state']

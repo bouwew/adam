@@ -48,8 +48,6 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             _LOGGER.error("Unable to get location info from the API")
             return
 
-        appliances = api.get_appliances()
-        domain_obj = api.get_domain_objects()
         _LOGGER.info('Dev %s', devs)
         for dev in devs:
             data = None
@@ -59,7 +57,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 dev_id = None
                 name = 'adam'
                 _LOGGER.info('Name %s', name)
-                data = api.get_device_data(appliances, domain_obj, dev_id, ctrl_id, None)
+                data = api.get_device_data(dev_id, ctrl_id, None)
 
                 if data is None:
                     _LOGGER.debug("Received no data for device %s.", name)
