@@ -63,9 +63,10 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         for dev in devs:
             if dev['name'] == 'Controlled Device':
                 ctrl_id = dev['id']
-            else:
+            if dev['type'] == "thermostat":
                 device = PwThermostat(thermostat['api'], dev['name'], dev['id'], ctrl_id, DEFAULT_MIN_TEMP, DEFAULT_MAX_TEMP)
                 if not device:
                     continue
                 devices.append(device)
+                _LOGGER.info('Adding climate.%s', dev['name'])
     add_entities(devices, True)

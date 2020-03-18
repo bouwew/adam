@@ -48,24 +48,25 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             _LOGGER.error("Unable to get location info from the API")
             return
 
-        data = None
         appliances = api.get_appliances()
         domain_obj = api.get_domain_objects()
         _LOGGER.info('Dev %s', devs)
         for dev in devs:
+            data = None
             _LOGGER.info('Dev %s', dev)
             if dev['name'] == 'Controlled Device':
                 ctrl_id = dev['id']
                 dev_id = None
-                name = dev['name']
+                name = 'adam'
                 _LOGGER.info('Name %s', name)
-                data = api.get_device_data(appliances, domain_obj, dev_id, ctrl_id)
+                data = api.get_device_data(appliances, domain_obj, dev_id, ctrl_id, None)
 
                 if data is None:
                     _LOGGER.debug("Received no data for device %s.", name)
                     return
 
-                device = PwWaterHeater(api, dev['name'], dev_id, ctrl_id)
+                device = PwWaterHeater(api, name, dev_id, ctrl_id)
+                _LOGGER.info('Adding water_heater.%s', name)
                 if not device:
                     continue
                 devices.append(device)
