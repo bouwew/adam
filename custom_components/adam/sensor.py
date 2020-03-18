@@ -65,56 +65,55 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             _LOGGER.error("Unable to get location info from the API")
             return
 
-        data = None
         appliances = api.get_appliances()
         domain_obj = api.get_domain_objects()
         _LOGGER.info('Dev %s', devs)
         for dev in devs:
+            data = None
             _LOGGER.info('Dev %s', dev)
             if dev['name'] == 'Controlled Device':
                 ctrl_id = dev['id']
                 dev_id = None
                 name = 'adam'
                 _LOGGER.info('Name %s', name)
-                data = api.get_device_data(appliances, domain_obj, dev_id, ctrl_id)
-            else:
+                data = api.get_device_data(appliances, domain_obj, dev_id, ctrl_id, None)
+            if dev['type'] == 'thermostat':
                 name = dev['name']
                 dev_id = dev['id']
                 _LOGGER.info('Name %s', name)
-                data = api.get_device_data(appliances, domain_obj, dev_id, ctrl_id)
+                data = api.get_device_data(appliances, domain_obj, dev_id, ctrl_id, None)
 
             if data is None:
                 _LOGGER.debug("Received no data for device %s.", name)
-                return
-
-            for sensor,sensor_type in SENSOR_AVAILABLE.items():
-                addSensor=False
-                if sensor == 'boiler_temperature':
-                    if 'boiler_temp' in data:
-                        if data['boiler_temp']:
-                            addSensor=True
-                            _LOGGER.info('Adding boiler_temp')
-                if sensor == 'water_pressure':
-                    if 'water_pressure' in data:
-                        if data['water_pressure']:
-                            addSensor=True
-                            _LOGGER.info('Adding water_pressure')
-                if sensor == 'battery_charge':
-                    if 'battery' in data:
-                        if data['battery']:
-                            addSensor=True
-                            _LOGGER.info('Adding battery_charge')
-                if sensor == 'outdoor_temperature':
-                    if 'outdoor_temp' in data:
-                        if data['outdoor_temp']:
-                            addSensor=True
-                            _LOGGER.info('Adding outdoor_temperature')
-                if sensor == 'illuminance':
-                    if 'illuminance' in data:
-                        if data['illuminance']:
-                            addSensor=True
-                            _LOGGER.info('Adding illuminance')
-                if addSensor:
-                    devices.append(PwThermostatSensor(api,'{}_{}'.format(name, sensor), dev_id, ctrl_id, sensor, sensor_type))
+                #return
+            else:
+                _LOGGER.debug("Device data %s.", data)
+                for sensor,sensor_type in SENSOR_AVAILABLE.items():
+                    addSensor=False
+                    if sensor == 'boiler_temperature':
+                        if 'boiler_temp' in data:
+                            if data['boiler_temp']:
+                                addSensor=True
+                    if sensor == 'water_pressure':
+                        if 'water_pressure' in data:
+                            if data['water_pressure']:
+                                addSensor=True
+                    if sensor == 'battery_charge':
+                        if 'battery' in data:
+                            if data['battery']:
+                                addSensor=True
+                    if sensor == 'outdoor_temperature':
+                        if 'outdoor_temp' in data:
+                            if data['outdoor_temp']:
+                                addSensor=True
+                    if sensor == 'illuminance':
+                        if 'illuminance' in data:
+                            if data['illuminance']:
+                                addSensor=True
+                    if addSensor:
+                        _LOGGER.info('Adding sensor.%s', '{}_{}'.format(name, sensor))
+                        devices.append(PwThermostatSensor(api,'{}_{}'.format(name, sensor), dev_id, ctrl_id, sensor, sensor_type))
+                    
+    _LOGGER.info('Adding entities:', devices)
     add_entities(devices, True)
 

@@ -211,7 +211,7 @@ class PwThermostatSensor(Entity):
         _LOGGER.debug("Update sensor called")
         self._appliances = self._api.get_appliances()
         self._domain_obj = self._api.get_domain_objects()
-        data = self._api.get_device_data(self._appliances, self._domain_obj, self._dev_id, self._ctrl_id)
+        data = self._api.get_device_data(self._appliances, self._domain_obj, self._dev_id, self._ctrl_id, None)
 
         if data is None:
             _LOGGER.debug("Received no data for device %s.", self._name)
@@ -275,7 +275,7 @@ class PwWaterHeater(Entity):
         _LOGGER.debug("Update water_heater called")
         self._appliances = self._api.get_appliances()
         self._domain_obj = self._api.get_domain_objects()
-        data = self._api.get_device_data(self._appliances, self._domain_obj, self._dev_id, self._ctrl_id)
+        data = self._api.get_device_data(self._appliances, self._domain_obj, self._dev_id, self._ctrl_id, None)
 
         if data is None:
             _LOGGER.debug("Received no data for device %s.", self._name)
@@ -443,9 +443,10 @@ class PwThermostat(ClimateDevice):
 
     def update(self):
         """Update the data for this climate device."""
+        _LOGGER.debug("Update climate called")
         self._appliances = self._api.get_appliances()
         self._domain_obj = self._api.get_domain_objects()
-        data = self._api.get_device_data(self._appliances, self._domain_obj, self._dev_id, self._ctrl_id)
+        data = self._api.get_device_data(self._appliances, self._domain_obj, self._dev_id, self._ctrl_id, None)
 
         if data is None:
             _LOGGER.debug("Received no data for device %s.", self._name)
