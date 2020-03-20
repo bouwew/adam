@@ -6,9 +6,10 @@ import plugwise
 from . import (
     DOMAIN,
     DATA_ADAM,
+    PwEntity,
 )
 
-from homeassistant.helpers.entity import Entity
+#from homeassistant.helpers.entity import Entity
 from homeassistant.const import (
     ATTR_BATTERY_LEVEL,
     ATTR_TEMPERATURE,
@@ -143,7 +144,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(devices, True)
 
 
-class PwThermostatSensor(Entity):
+class PwThermostatSensor(PwEntity):
     """Representation of a Plugwise thermostat sensor."""
 
     def __init__(self, api, name, dev_id, ctlr_id, plug_id, sensor, sensor_type):

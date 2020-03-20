@@ -26,6 +26,7 @@ from homeassistant.const import (
 from . import (
     DOMAIN,
     DATA_ADAM,
+    PwEntity,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -82,7 +83,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 #    hass.helpers.discovery.load_platform('climate', DOMAIN, {}, config)
 
 
-class PwThermostat(ClimateDevice):
+class PwThermostat(PwEntity, ClimateDevice):
     """Representation of an Plugwise thermostat."""
 
     def __init__(self, api, name, dev_id, ctlr_id, min_temp, max_temp):
