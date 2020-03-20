@@ -236,7 +236,7 @@ class PwThermostatSensor(PwEntity):
             if self._sensor == 'battery_charge':
                 if 'battery' in data:
                     value = data['battery']
-                    self._state = int(round(value * 100))
+                    self._state = int(round(float(value * 100)))
             if self._sensor == 'outdoor_temperature':
                 if 'outdoor_temp' in data:
                     self._state = data['outdoor_temp']
