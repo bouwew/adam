@@ -7,7 +7,7 @@ Configuration.yaml:
 adam:
   password: your ID
   host: the local IP address of the Adam (or Smile)
-  scan_interval: 60 (default = 60)
+  scan_interval: 60 (default = 30)
 ```
 
 With support for Plugs, including control.
