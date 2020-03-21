@@ -11,4 +11,4 @@ adam:
 ```
 
 With support for Plugs, including control.
-NOTE: a Plug will only be correctly detected when it is configured with a unique Appliance name (Naam apparaat).
+NOTE: when there are more Plugs, they will only be correctly detected when each Plug is configured with a unique Appliance name (Naam apparaat).
