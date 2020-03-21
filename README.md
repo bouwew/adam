@@ -11,5 +11,4 @@ adam:
 ```
 
 With support for Plugs, including control.
-NOTE: a Plug will only be detected when it is configured with a unique Zone Name, each Plug must be in its own zone.
-Also, do not put a Plug and a Thermostat in the same zone.
+NOTE: a Plug will only be correctly detected when it is configured with a unique Appliance name (Naam apparaat).
