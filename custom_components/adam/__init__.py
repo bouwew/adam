@@ -39,7 +39,7 @@ DOMAIN = 'adam'
 DATA_ADAM = "adam_data"
 SIGNAL_UPDATE_ADAM = "adam_update"
 SCAN_INTERVAL = timedelta(seconds=30)
-PLATFORMS = ["climate", "sensor", "switch", "water_heater"]
+PLATFORMS = ["climate"] #, "sensor", "switch", "water_heater"]
 
 
 # Read configuration
