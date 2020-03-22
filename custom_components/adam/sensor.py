@@ -273,7 +273,7 @@ class PwThermostatSensor(PwEntity):
                         self._state = int(round(value * 100))
             if self._sensor == 'trv_1_battery_charge':
                 if 'trv_1_battery' in data:
-                        if data['trv_1_battery']:
+                    if data['trv_1_battery']:
                         value = float(data['trv_1_battery'])
                         self._state = int(round(value * 100))
             if self._sensor == 'trv_2_battery_charge':
