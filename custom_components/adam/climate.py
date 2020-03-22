@@ -53,18 +53,15 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     }
 )
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Add the Plugwise ClimateDevice."""
-    
-    if discovery_info is None:
-        return
-
-    api = hass.data[DATA_ADAM].data
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up the Smile Thermostats from a config entry."""
+    api = hass.data[DOMAIN][config_entry.entry_id]['api']
+    updater = hass.data[DOMAIN][config_entry.entry_id]['updater']
 
     devices = []
     ctrl_id = None
     try:
-        devs = api.get_devices()
+        devs = await api.get_devices()
     except RuntimeError:
         _LOGGER.error("Unable to get location info from the API")
         return
@@ -73,25 +70,26 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         if dev['name'] == 'Controlled Device':
             ctrl_id = dev['id']
         if dev['type'] == "thermostat":
-            device = PwThermostat(api, dev['name'], dev['id'], ctrl_id, DEFAULT_MIN_TEMP, DEFAULT_MAX_TEMP)
-            if not device:
-                continue
-            devices.append(device)
-            _LOGGER.info('Adding climate.%s', dev['name'])
-    add_entities(devices, True)
+            #device = PwThermostat(api, dev['name'], dev['id'], ctrl_id, DEFAULT_MIN_TEMP, DEFAULT_MAX_TEMP)
+                device = PwThermostat(api, updater, dev['name'], dev['id'], ctrl_id, 4, 30)
+                _LOGGER.debug("Plugwise device : %s",device)
+                if not device:
+                    continue
+                devices.append(device)
+    async_add_entities(devices, True)
 
-#    hass.helpers.discovery.load_platform('climate', DOMAIN, {}, config)
 
-
-class PwThermostat(PwEntity, ClimateDevice):
+class PwThermostat(ClimateDevice):
     """Representation of an Plugwise thermostat."""
 
-    def __init__(self, api, name, dev_id, ctlr_id, min_temp, max_temp):
+    def __init__(self, api, updater, name, dev_id, ctlr_id, min_temp, max_temp):
         """Set up the Plugwise API."""
         self._api = api
+        self._updater = updater
         self._name = name
         self._dev_id = dev_id
         self._ctrl_id = ctlr_id
+        self._unique_id = f"{dev_id}_climate"
         self._min_temp = min_temp
         self._max_temp = max_temp
 
@@ -115,6 +113,25 @@ class PwThermostat(PwEntity, ClimateDevice):
         self._hvac_mode = None
 
     @property
+    def unique_id(self):
+        """Return a unique ID."""
+        return self._unique_id
+
+    async def async_added_to_hass(self):
+        """Register callbacks."""
+        self._updater.async_add_listener(self._update_callback)
+
+    async def async_will_remove_from_hass(self):
+        """Disconnect callbacks."""
+        self._updater.async_remove_listener(self._update_callback)
+
+    @callback
+    def _update_callback(self):
+        """Call update method."""
+        self.update()
+        self.async_write_ha_state()
+
+    @property
     def hvac_action(self):
         """Return the current action."""
         if self._heating_status or self._boiler_status or self._dhw_status:
@@ -129,6 +146,15 @@ class PwThermostat(PwEntity, ClimateDevice):
         return self._name
 
     @property
+    def device_info(self) -> Dict[str, any]:
+        """Return the device information."""
+        return {
+            "identifiers": {(DOMAIN, self._dev_id)},
+            "name": self._name,
+            "manufacturer": "Plugwise",
+        }
+
+    @property
     def icon(self):
         """Return the icon to use in the frontend."""
         return THERMOSTAT_ICON
@@ -137,6 +163,11 @@ class PwThermostat(PwEntity, ClimateDevice):
     def supported_features(self):
         """Return the list of supported features."""
         return SUPPORT_FLAGS
+
+    @property
+    def should_poll(self):
+        """No need to poll. Coordinator notifies entity of updates."""
+        return False
 
     @property
     def device_state_attributes(self):
@@ -212,37 +243,32 @@ class PwThermostat(PwEntity, ClimateDevice):
         """Return the unit of measured temperature."""
         return TEMP_CELSIUS
         
-    def set_temperature(self, **kwargs):
+    async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if (temperature is not None) and (self._min_temp < temperature < self._max_temp):
-            _LOGGER.debug("Adjusting temperature to %s degrees C.", temperature)
-            self._api.set_temperature(self._dev_id, self._dev_type, temperature)
-            self._api.get_appliances()
+            _LOGGER.debug("Set temp dev_id = %s",self._dev_id)
+            await self._api.set_temperature(self._dev_id, temperature)
         else:
             _LOGGER.error("Invalid temperature requested")
 
-    def set_hvac_mode(self, hvac_mode):
+    async def async_set_hvac_mode(self, hvac_mode):
         """Set the hvac mode."""
-        _LOGGER.debug("Adjusting hvac_mode to %s", hvac_mode)
+        _LOGGER.debug("Adjusting hvac_mode (i.e. schedule/schema): %s, %s.", hvac_mode)
         state = "false"
         if hvac_mode == HVAC_MODE_AUTO:
             state = "true"
-        self._api.set_schedule_state(self._dev_id, self._last_active_schema, state)
-        self._api.get_domain_objects()
-        self._api.get_appliances()
+        await self._api.set_schedule_state(self._dev_id, self._last_active_schema, state)
 
-    def set_preset_mode(self, preset_mode):
-        _LOGGER.debug("Adjusting preset to %s", preset_mode)
+    async def async_set_preset_mode(self, preset_mode):
+        _LOGGER.debug("Changing preset mode to %s.", preset_mode)
         """Set the preset mode."""
-        self._api.set_preset(self._dev_id, self._dev_type, preset_mode)
-        self._api.get_domain_objects()
-        self._api.get_appliances()
+        await self._api.set_preset(self._dev_id, preset_mode)
 
-    def update(self):
+    async def update(self):
         """Update the data for this climate device."""
         _LOGGER.debug("Update climate called")
-        data = self._api.get_device_data(self._dev_id, self._ctrl_id, None)
+        data = await self._api.get_device_data(self._dev_id, self._ctrl_id, None)
 
         if data is None:
             _LOGGER.debug("Received no data for device %s.", self._name)

@@ -1,5 +1,6 @@
 """Plugwise Adam component for Home Assistant Core."""
 
+import asyncio
 import logging
 
 import voluptuous as vol
@@ -8,12 +9,12 @@ import plugwise
 from datetime import timedelta
 from homeassistant.helpers import discovery
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.event import track_time_interval
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect, dispatcher_send)
 from homeassistant.helpers import config_validation as cv
-from homeassistant.util import Throttle
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from homeassistant.const import (
     CONF_HOST,
@@ -38,6 +39,8 @@ DOMAIN = 'adam'
 DATA_ADAM = "adam_data"
 SIGNAL_UPDATE_ADAM = "adam_update"
 SCAN_INTERVAL = timedelta(seconds=30)
+PLATFORMS = ["climate", "sensor", "switch", "water_heater"]
+
 
 # Read configuration
 #ADAM_CONFIG = vol.Schema(
@@ -76,83 +79,125 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-def setup(hass, config):
-    """Set up the Plugwise (Anna) Thermostat."""
-    conf = config.get(DOMAIN)
-    scan_interval = conf.get(CONF_SCAN_INTERVAL)
-
-    if conf is None:
-        raise PlatformNotReady
-
-    _LOGGER.info('Plugwise %s',conf)
-    hass.data[DATA_ADAM] = {}
-
-#    if CONF_ADAM in conf:
-#        adams = conf[CONF_ADAM]
-
-#    _LOGGER.info('Adams %s', adams)
-#    hass.data[DOMAIN] = {}
-
-#        for adam in adams:
-#            _LOGGER.info('Adam %s', adam)
-#            adam_config=adam[0]
-
-    adam = plugwise.Plugwise(
-            conf[CONF_USERNAME],
-            conf[CONF_PASSWORD],
-            conf[CONF_HOST],
-            conf[CONF_PORT],
-    )
-
-    try:
-        adam.ping_gateway()
-    except OSError:
-        _LOGGER.debug("Ping failed, retrying later", exc_info=True)
-        raise PlatformNotReady
-
-    hass.data[DATA_ADAM] = PwHub(adam)
-
-    def adam_refresh(event_time):
-        """Call Adam to refresh information."""
-        _LOGGER.debug("Collecting Adam data")
-        hass.data[DATA_ADAM].data.full_update_device()
-        dispatcher_send(hass, SIGNAL_UPDATE_ADAM)
-
-    # Call the Plugwise API to refresh updates
-    track_time_interval(hass, adam_refresh, scan_interval)
-
-    adam.full_update_device()
-    hass.helpers.discovery.load_platform('climate', DOMAIN, {}, config)
-    hass.helpers.discovery.load_platform('sensor', DOMAIN, {}, config)
-    hass.helpers.discovery.load_platform('switch', DOMAIN, {}, config)
-    hass.helpers.discovery.load_platform('water_heater', DOMAIN, {}, config)
-
-    _LOGGER.info('Config %s', hass.data[DATA_ADAM])
+async def async_setup(hass: HomeAssistant, config: dict):
+    """Set up the Plugwise platform."""
     return True
 
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Plugwise Smiles from a config entry."""
+    # TODO Store an API object for your platforms to access
+    # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
 
-class PwHub:
-    """Representation of a base Plugwise device."""
+    websession = async_get_clientsession(hass, verify_ssl=False)
+    api = plugwise.Plugwise(
+                           host = conf[CONF_HOST],
+                           password = conf[CONF_PASSWORD],
+                           websession = websession
+                           )
 
-    def __init__(self, data):
-        """Initialize the device."""
-        self.data = data
+    await api.connect()
+
+    update_interval = conf.get(CONF_SCAN_INTERVAL)
+
+    _LOGGER.debug("Plugwise async update interval %s", scan_interval)
+
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+        "api": api,
+        "updater": SmileDataUpdater(
+            hass, "device", entry.entry_id, api, "full_update_device", update_interval
+        ),
+    }
+
+    #_LOGGER.debug("Plugwise async entry hass data %s",hass.data[DOMAIN])
+    # hass.data[DOMAIN][entry.entry_id] = api
+
+    for component in PLATFORMS:
+        hass.async_create_task(
+            hass.config_entries.async_forward_entry_setup(entry, component)
+        )
+
+    async def async_refresh_all(_):
+        """Refresh all Smile data."""
+        for info in hass.data[DOMAIN].values():
+            await info["updater"].async_refresh_all()
+
+    # Register service
+    hass.services.async_register(DOMAIN, "update", async_refresh_all)
+
+    return True
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Unload a config entry."""
+    unload_ok = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, component)
+                for component in PLATFORMS
+            ]
+        )
+    )
+    if unload_ok:
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unload_ok
 
 
-class PwEntity(Entity):
-    """Entity class for Plugwise devices."""
+class SmileDataUpdater:
+    """Data storage for single API endpoint."""
 
-    def __init__(self, data):
-        """Initialize the Hydrawise entity."""
-        self.data = data
-
-    async def async_added_to_hass(self):
-        """Register callbacks."""
-        async_dispatcher_connect(
-            self.hass, SIGNAL_UPDATE_ADAM, self._update_callback)
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        data_type: str,
+        config_entry_id: str,
+        api: Smile,
+        update_method: str,
+        update_interval: timedelta,
+    ):
+        """Initialize global data updater."""
+        self.hass = hass
+        self.data_type = data_type
+        self.config_entry_id = config_entry_id
+        self.api = api
+        self.update_method = update_method
+        self.update_interval = update_interval
+        self.listeners = []
+        self._unsub_interval = None
 
     @callback
-    def _update_callback(self):
-        """Call update method."""
-        self.async_schedule_update_ha_state(True)
+    def async_add_listener(self, update_callback):
+        """Listen for data updates."""
+        # This is the first listener, set up interval.
+        if not self.listeners:
+            self._unsub_interval = async_track_time_interval(
+                self.hass, self.async_refresh_all, self.update_interval
+            )
+
+        self.listeners.append(update_callback)
+
+    @callback
+    def async_remove_listener(self, update_callback):
+        """Remove data update."""
+        self.listeners.remove(update_callback)
+
+        if not self.listeners:
+            self._unsub_interval()
+            self._unsub_interval = None
+
+    async def async_refresh_all(self, _now: Optional[int] = None) -> None:
+        """Time to update."""
+        _LOGGER.debug("Plugwise Smile updating with interval: %s", self.update_interval)
+        if not self.listeners:
+            _LOGGER.debug("Plugwise Smile has no listeners, not updating")
+            return
+
+        _LOGGER.debug("Plugwise Smile updating data using: %s", self.update_method)
+        #await self.hass.async_add_executor_job(
+            # getattr(self.api, self.update_method)
+        #)
+        await self.api.full_update_device()
+
+        for update_callback in self.listeners:
+            update_callback()
+
 
