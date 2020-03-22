@@ -3,11 +3,10 @@
 import logging
 import plugwise
 
-from homeassistant.helpers.entity import Entity
-
 from . import (
     DOMAIN,
     DATA_ADAM,
+    PwEntity,
 )
 
 from homeassistant.components.climate.const import (
@@ -60,7 +59,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(devices, True)
 
 
-class PwWaterHeater(Entity):
+class PwWaterHeater(PwEntity):
     """Representation of a Plugwise water_heater."""
 
     def __init__(self, api, name, dev_id, ctlr_id):

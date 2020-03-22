@@ -6,6 +6,7 @@ import plugwise
 from . import (
     DOMAIN,
     DATA_ADAM,
+    PwEntity,
 )
 
 from homeassistant.components.switch import SwitchDevice
@@ -52,7 +53,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities(devices, True)
 
 
-class PwSwitch(SwitchDevice):
+class PwSwitch(PwEntity, SwitchDevice):
     """Representation of a Plugwise plug."""
 
     def __init__(self, api, name, plug_type, plug_id):
@@ -72,15 +73,15 @@ class PwSwitch(SwitchDevice):
         """Turn the device on."""
         _LOGGER.debug("Turn switch.%s on.", self._name)
         self._api.set_relay_state(self._plug_id, self._plug_type, 'on')
-        self._api.full_update_device()
-        self.update()
+        self._api.get_domain_objects()
+        self._api.get_appliances()
 
     def turn_off(self, **kwargs):
         """Turn the device off."""
         _LOGGER.debug("Turn switch.%s off.", self._name)
         self._api.set_relay_state(self._plug_id, self._plug_type, 'off')
-        self._api.full_update_device()
-        self.update()
+        self._api.get_domain_objects()
+        self._api.get_appliances()
 
     @property
     def name(self):
