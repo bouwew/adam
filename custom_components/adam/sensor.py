@@ -37,8 +37,14 @@ SENSOR_TYPES = {
 
 SENSOR_AVAILABLE = {
     "boiler_temperature": ATTR_TEMPERATURE,
+    "trv_1_current_temperature": ATTR_TEMPERATURE,
+    "trv_2_current_temperature": ATTR_TEMPERATURE,
+    "trv_3_current_temperature": ATTR_TEMPERATURE,
     "water_pressure": "pressure",
     "battery_charge": ATTR_BATTERY_LEVEL,
+    "trv_1_battery_charge": ATTR_BATTERY_LEVEL,
+    "trv_2_battery_charge": ATTR_BATTERY_LEVEL,
+    "trv_3_battery_charge": ATTR_BATTERY_LEVEL,
     "outdoor_temperature": ATTR_TEMPERATURE,
     "illuminance": "illuminance",
     "electricity_consumed": "energy_flow",
@@ -77,6 +83,9 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             plug_id = None
             name = 'adam'
             _LOGGER.info('Name %s', name)
+            _LOGGER.info('dev_id %s', dev_id)
+            _LOGGER.info('ctrl_id %s', ctrl_id)
+            _LOGGER.info('plug_id %s', plug_id)
             data = api.get_device_data(dev_id, ctrl_id, plug_id)
         if dev['type'] == 'thermostat':
             dev_id = dev['id']
@@ -111,6 +120,30 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 if sensor == 'battery_charge':
                     if 'battery' in data:
                         if data['battery']:
+                            addSensor=True
+                if sensor == 'trv_1_battery_charge':
+                    if 'trv_1_battery' in data:
+                        if data['trv_1_battery']:
+                            addSensor=True
+                if sensor == 'trv_2_battery_charge':
+                    if 'trv_2_battery' in data:
+                        if data['trv_2_battery']:
+                            addSensor=True
+                if sensor == 'trv_3_battery_charge':
+                    if 'trv_3_battery' in data:
+                        if data['trv_3_battery']:
+                            addSensor=True
+                if sensor == 'trv_1_current_temperature':
+                    if 'trv_1_current_temperature' in data:
+                        if data['trv_1_current_temperature']:
+                            addSensor=True
+                if sensor == 'trv_2_current_temperature':
+                    if 'trv_2_current_temperature' in data:
+                        if data['trv_2_current_temperature']:
+                            addSensor=True
+                if sensor == 'trv_3_current_temperature':
+                    if 'trv_3_current_temperature' in data:
+                        if data['trv_3_current_temperature']:
                             addSensor=True
                 if sensor == 'outdoor_temperature':
                     if 'outdoor_temp' in data:
@@ -237,6 +270,33 @@ class PwThermostatSensor(PwEntity):
                 if 'battery' in data:
                     value = float(data['battery'])
                     self._state = int(round(value * 100))
+            if sensor == 'trv_1_battery_charge':
+                if 'trv_1_battery' in data:
+                    if data['trv_1_battery']:
+                    value = float(data['trv_1_battery'])
+                    self._state = int(round(value * 100))
+            if sensor == 'trv_2_battery_charge':
+                if 'trv_2_battery' in data:
+                    if data['trv_2_battery']:
+                    value = float(data['trv_2_battery'])
+                    self._state = int(round(value * 100))
+            if sensor == 'trv_3_battery_charge':
+                if 'trv_3_battery' in data:
+                    if data['trv_3_battery']:
+                    value = float(data['trv_3_battery'])
+                    self._state = int(round(value * 100))
+            if sensor == 'trv_1_current_temperature':
+                if 'trv_1_current_temperature' in data:
+                    if data['trv_1_current_temperature']:
+                        self._state = data['trv_1_current_temperature']
+            if sensor == 'trv_2_current_temperature':
+                if 'trv_2_current_temperature' in data:
+                    if data['trv_2_current_temperature']:
+                        self._state = data['trv_2_current_temperature']
+            if sensor == 'trv_3_current_temperature':
+                if 'trv_3_current_temperature' in data:
+                    if data['trv_3_current_temperature']:
+                        self._state = data['trv_3_current_temperature']
             if self._sensor == 'outdoor_temperature':
                 if 'outdoor_temp' in data:
                     self._state = data['outdoor_temp']
