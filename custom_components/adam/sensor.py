@@ -271,28 +271,28 @@ class PwThermostatSensor(PwEntity):
                     if data['battery']:
                     value = float(data['battery'])
                     self._state = int(round(value * 100))
-            if sensor == 'trv_1_battery_charge':
+            if self._sensor == 'trv_1_battery_charge':
                 if 'trv_1_battery' in data:
                     if data['trv_1_battery']:
                     value = float(data['trv_1_battery'])
                     self._state = int(round(value * 100))
-            if sensor == 'trv_2_battery_charge':
+            if self._sensor == 'trv_2_battery_charge':
                 if 'trv_2_battery' in data:
                     if data['trv_2_battery']:
                     value = float(data['trv_2_battery'])
                     self._state = int(round(value * 100))
-            if sensor == 'trv_3_battery_charge':
+            if self._sensor == 'trv_3_battery_charge':
                 if 'trv_3_battery' in data:
                     if data['trv_3_battery']:
                     value = float(data['trv_3_battery'])
                     self._state = int(round(value * 100))
-            if sensor == 'trv_1_current_temperature':
+            if self._sensor == 'trv_1_current_temperature':
                 if 'trv_1_current_temp' in data:
                         self._state = data['trv_1_current_temp']
-            if sensor == 'trv_2_current_temperature':
+            if self._sensor == 'trv_2_current_temperature':
                 if 'trv_2_current_temp' in data:
                         self._state = data['trv_2_current_temp']
-            if sensor == 'trv_3_current_temperature':
+            if self._sensor == 'trv_3_current_temperature':
                 if 'trv_3_current_temp' in data:
                         self._state = data['trv_3_current_temp']
             if self._sensor == 'outdoor_temperature':
